@@ -1,0 +1,46 @@
+use a latent as starting point to generate somethin
+look at img2img in the stable diffusion 
+
+-- make some kind of metric that learns "how far" to go from rabbit to that
+
+use caption to siggest how far to go from style to letter. 
+
+Instead of using it completely, why not use the letters lattent, then mess it up a little according to needed style
+this wud be similar to the inpainting etc 
+
+make multiple sentences 
+"rabbit in shape of A"
+"rabbit in style of A"
+"A with shape of rabbit"
+"Rabbit and A both"
+
+diffusion based discriminator:
+send features from along the unet to the discriminator
+add some noisy images, and the discriminator detects the removed noise 
+
+<>
+refine after its made. refine it by moving it to the letter latent. 
+Use the original latent and then use the new adjusted latents to make it 
+
+TEST USING THIS TO PUT SOMETHING IN A POSE ! 
+
+a soft combination 
+e1 * a + (1-a) * e2
+added at each denoising step 
+
+perception loss: from the paper on disentanglement
+
+
+<change how the style is learned. using images is very restrictibe. need to use the learned
+space of original generator.>
+
+want it to just learn through a textual prompt, not using test images. 
+<not fine tune the generator then. cant train two, dont have the resources>
+<reduce the "steps" of t, will reduce resources>
+
+
+NEXT
+1) improve the letter readability
+2) change how the style is learned, change it to textual rather than images 
+
+
