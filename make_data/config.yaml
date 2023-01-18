@@ -59,19 +59,12 @@ model:
 
     cond_stage_config:
       target: ldm.modules.encoders.modules.FrozenCLIPEmbedder
-        
-    discriminator_config:
-      target: ldm.modules.discriminator.Discriminator
-      params:
-        input_dims: 32
-        hidden_dims: 32
-
 
 data:
   target: main.DataModuleFromConfig
   params:
     batch_size: 1
-    num_workers: 4
+    num_workers: 32
     wrap: false
     train:
       target: ldm.data.rasterizer.Rasterizer
@@ -81,7 +74,7 @@ data:
         caption: "4&*w^U&R2j"
         caption2: "4&*w^U&R2j"
         style_word: "okramun"
-        images: "data/custom_data/rabbit"
+        images: "data/rabbit_ca"
         num_samples: 512
         make_black: False
     validation:
@@ -92,7 +85,7 @@ data:
         caption: "4&*w^U&R2j"
         caption2: "4&*w^U&R2j"
         style_word: "4&*w^U&R2j"
-        images: "data/custom_data/rabbit"
+        images: "data/rabbit_ca"
         num_samples: 16
         make_black: False
 

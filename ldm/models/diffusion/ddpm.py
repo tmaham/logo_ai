@@ -1151,6 +1151,7 @@ class LatentDiffusion(DDPM):
         # loss2 = self.custom_loss(batch, loss_type=0)
         # loss = loss1 + 0.1 * loss2
         
+        pdb.set_trace()
         # attempt2
         loss1, loss2 = self.discrimator_loss(batch, optimizer_idx=optimizer_idx)
         loss = loss1 +  0.01 * loss2 

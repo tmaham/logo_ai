@@ -44,3 +44,48 @@ NEXT
 2) change how the style is learned, change it to textual rather than images 
 
 
+
+How to learn it using text?
+Have a base word: e.g. rabbit
+Have some extra words: e.g. pink, red, cute, cartoon, realistic etc 
+
+Start with using only base word 
+
+THe generator has text based image output. so if i use the trained generator, with each text it gives some images. 
+how to use this ? i can give the text word, and it will give me some random latent output 
+but this will take a full 50 smt generation. 
+
+another ooption is to use clip based loss. i can use the clip text and image feature extractors. but im currently using the 
+sampel images as noisy inputs. how can id o this with clip ?
+
+thsi seems to be moving to a changing input data. currently i have a specific set of input images. i can generate the input images. 
+how about instead of every iteration i do it every 50 iterations? 
+how to update them? maybe use clip based losses to update the images that are used for input
+how to generate these images? 
+use the generator itself.
+use it to generate both the updating input images and also the letters 
+how to do this ? the generator can work with clip loss. learn it using clip loss ?
+
+so i need something to differentiate the base word generator and the generator itself loss
+
+so it will have two parts:
+1) one part will be generating the input images based on clip loss. 
+it will train the generator to generate images for its own use
+
+the main problem with this is the generator uses noisy images. 
+so i do need the original trained generator. thats the only way i can keep getting stuff from original based word.
+
+maybe i can use it in original "data generation" step. use the words to make a set of 50 images. and then use it to train?
+
+
+2) the other part will be using these generated images to make the letters.
+
+
+ATTEMPT1: 
+step1:
+Just the use the trained generator to generate 50 or so images with the base word.
+use these 50 images to then train the generator to work with letters. 
+step2:
+i can also train it to keep the basics same. like use rabbit-T. rabbit-A etc to generate letters
+but rabbit to generate the basics. lets see if this improves it somewhat.
+
