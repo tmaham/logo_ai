@@ -1005,10 +1005,11 @@ class LatentDiffusion(DDPM):
         cond = self.get_learned_conditioning(caption)
 
         # loss2
-        img1 = rearrange(batch["style"]["image"], 'b h w c -> b c h w')
-        img1 = img1.to(memory_format=torch.contiguous_format).float()
-        img1 = self.encode_first_stage(img1)
-        z_S = self.get_first_stage_encoding(img1).detach()
+        # img1 = rearrange(batch["style"]["image"], 'b h w c -> b c h w')
+        # img1 = img1.to(memory_format=torch.contiguous_format).float()
+        # img1 = self.encode_first_stage(img1)
+        # z_S = self.get_first_stage_encoding(img1).detach()
+        z_S = batch["style"]["image"]
 
         img2 = rearrange(batch["base"]["image"], 'b h w c -> b c h w')
         img2 = img2.to(memory_format=torch.contiguous_format).float()
@@ -1151,7 +1152,7 @@ class LatentDiffusion(DDPM):
         # loss2 = self.custom_loss(batch, loss_type=0)
         # loss = loss1 + 0.1 * loss2
         
-        pdb.set_trace()
+        
         # attempt2
         loss1, loss2 = self.discrimator_loss(batch, optimizer_idx=optimizer_idx)
         loss = loss1 +  0.01 * loss2 
