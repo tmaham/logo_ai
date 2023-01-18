@@ -30,7 +30,7 @@ model:
         num_heads: 8
         use_spatial_transformer: True
         transformer_depth: 1
-        context_dim: 768 # 1280
+        context_dim: 1280 # 1280
         use_checkpoint: True
         legacy: False
 
@@ -58,7 +58,10 @@ model:
           target: torch.nn.Identity
 
     cond_stage_config:
-      target: ldm.modules.encoders.modules.FrozenCLIPEmbedder
+      target: ldm.modules.encoders.modules.BERTEmbedder
+      params:
+        n_embed: 1280
+        n_layer: 32
 
 
     discriminator_config:
@@ -66,11 +69,6 @@ model:
       params:
         input_dims: 4096
         hidden_dims: 2048
-
-    adapter_config:
-      target: ldm.modules.discriminator.Adapter
-      params:
-        input_dims: 4096
 
 
 data:

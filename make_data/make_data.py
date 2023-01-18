@@ -13,7 +13,7 @@ command = "rm -r " + output_path + "/*"
 os.system(command)
 
 
-li = "sd-v1-1.ckpt"
+li = "model.ckpt"
 prompt = base_word
 command = "python generate_data.py --ddim_eta 1.0 \
                           --n_samples 50 \

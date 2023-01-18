@@ -117,12 +117,19 @@ if __name__ == "__main__":
         "--embedding_path", 
         type=str, 
         help="Path to a pre-trained embedding manager checkpoint")
+    
+    parser.add_argument(
+        "--output_path",
+        type=str, 
+        default = "none",
+    )
+
 
     opt = parser.parse_args()
 
 
     # config = OmegaConf.load("configs/latent-diffusion/txt2img-1p4B-eval_with_tokens.yaml")  # TODO: Optionally download from same location as ckpt and chnage this logic
-    config = OmegaConf.load("configs/finetune/finetune.yaml")
+    config = OmegaConf.load("configs/finetune/finetune_back.yaml")
     # config = OmegaConf.load("configs/latent-diffusion/txt2img-1p4B-finetune2.yaml")
     model = load_model_from_config(config, opt.ckpt_path)  # TODO: check path
     # model.embedding_manager.load(opt.embedding_path)
@@ -163,8 +170,10 @@ if __name__ == "__main__":
                                                 unconditional_guidance_scale=opt.scale,
                                                 unconditional_conditioning=uc,
                                                 eta=opt.ddim_eta)
-
-
+                
+                if opt.output_path != "none":
+                    np.save(opt.output_path + '/data', samples_ddim.cpu().detach().numpy())
+                
                 x_samples_ddim = model.decode_first_stage(samples_ddim)
                 x_samples_ddim = torch.clamp((x_samples_ddim+1.0)/2.0, min=0.0, max=1.0)
 
