@@ -3,13 +3,45 @@ import pdb
 import torch 
 
 dcgan = True
+org64 = True
 
-if dcgan:
+if org64:
     class Discriminator(nn.Module):
-        def __init__(self, input_dims, hidden_dims):
+        def __init__(self):
             super(Discriminator, self).__init__()
             self.ngpu = 0
-            self.mode = 12
+            nc = 4
+            ndf = 64
+            self.main = nn.Sequential(
+                # input is (nc) x 64 x 64
+                nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),
+                nn.LeakyReLU(0.2, inplace=True),
+                # state size. (ndf) x 32 x 32
+                nn.Conv2d(ndf, ndf * 2, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ndf * 2),
+                nn.LeakyReLU(0.2, inplace=True),
+                # state size. (ndf*2) x 16 x 16
+                nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ndf * 4),
+                nn.LeakyReLU(0.2, inplace=True),
+                # state size. (ndf*4) x 8 x 8
+                nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ndf * 8),
+                nn.LeakyReLU(0.2, inplace=True),
+                # state size. (ndf*8) x 4 x 4
+                nn.Conv2d(ndf * 8, 1, 4, 1, 0, bias=False),
+                nn.Sigmoid()
+            )
+
+        def forward(self, input, letter):
+            return self.main(input)
+
+elif dcgan:
+    class Discriminator(nn.Module):
+        def __init__(self):
+            super(Discriminator, self).__init__()
+            self.ngpu = 0
+            self.mode = 2
 
             if self.mode == 1:
                 nc = 5
@@ -53,7 +85,7 @@ if dcgan:
 else:
     class Discriminator(nn.Module):
 
-        def __init__(self, input_dims, hidden_dims):
+        def __init__(self):
             super(Discriminator, self).__init__()
 
             self.restored = False
@@ -74,21 +106,4 @@ else:
             return last[0][letter]
             return last
 
-class Adapter(nn.Module):
-
-    def __init__(self):
-        super(Adapter, self).__init__()
-
-        self.restored = False
-        self.relu = nn.LeakyReLU()
-
-        self.layer1 = nn.Linear(4096, 4096)
-        self.layer2 = nn.Linear(4096, 4096)
-        
-
-    def forward(self, input):
-        input = input.flatten(start_dim=1)
-        out = self.relu(self.layer1(input))
-        out = self.relu(self.layer2(out))
-        return out
 

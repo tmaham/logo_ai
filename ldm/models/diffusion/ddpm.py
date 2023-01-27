@@ -65,7 +65,7 @@ class DDPM(pl.LightningModule):
                  monitor="val/loss",
                  use_ema=True,
                  first_stage_key="image",
-                 image_size=256,
+                 image_size=512,
                  channels=3,
                  log_every_t=100,
                  clip_denoised=True,
@@ -446,6 +446,7 @@ class LatentDiffusion(DDPM):
                  scale_factor=1.0,
                  scale_by_std=False,
                  discriminator_config=None,
+                 generator_config=None,
                  *args, **kwargs):
         self.num_timesteps_cond = default(num_timesteps_cond, 1)
         self.scale_by_std = scale_by_std
@@ -482,8 +483,15 @@ class LatentDiffusion(DDPM):
             self.restarted_from_ckpt = True
 
         self.discriminator = instantiate_from_config(discriminator_config)
+        self.generator = instantiate_from_config(generator_config)
+
 
         self.iter = 1
+
+        self.clip_model, preprocess = clip.load("ViT-L/14", device="cuda")
+
+        shape = [1,4,32,32]
+        self.noise = default(None, lambda: torch.randn(shape)).cuda()
 
     def make_cond_schedule(self, ):
         self.cond_ids = torch.full(size=(self.num_timesteps,), fill_value=self.num_timesteps - 1, dtype=torch.long)
@@ -1001,10 +1009,11 @@ class LatentDiffusion(DDPM):
         real_label = 1.
         fake_label = 0.
 
-        caption = batch["base"]["caption"]
+        # caption = batch["base"]["caption"]
+        caption = "rabbit okramun"
         cond = self.get_learned_conditioning(caption)
 
-        # loss2
+
         img1 = rearrange(batch["style"]["image"], 'b h w c -> b c h w')
         img1 = img1.to(memory_format=torch.contiguous_format).float()
         img1 = self.encode_first_stage(img1)
@@ -1022,6 +1031,10 @@ class LatentDiffusion(DDPM):
         logvar_t = self.logvar[t.cpu()].to(self.device)
         
         noise = default(None, lambda: torch.randn_like(z_S))
+        
+        # noise_in = torch.randn(z_S.shape[0], 100, 1, 1, device="cuda")
+        # noise = self.generator(noise_in)
+
         x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
         noise1 = self.apply_model(x_noisy, t, cond)
         z_theta = self.predict_start_from_noise(x_noisy,t,noise1)
@@ -1030,6 +1043,7 @@ class LatentDiffusion(DDPM):
 
         loss_base = self.get_loss(noise1, noise, mean=False).mean([1,2,3])
         loss_base = loss_base / torch.exp(logvar_t) + logvar_t
+        loss_base = self.l_simple_weight * loss_base.mean()
 
         letter = batch["number"][0].cpu().detach().numpy()
 
@@ -1051,10 +1065,11 @@ class LatentDiffusion(DDPM):
 
             loss = (loss1+loss2)/2
 
+
         loss2=loss
         # loss2= loss/ torch.exp(logvar_t) + logvar_t
 
-        return loss_base, loss2
+        return loss_base, loss2, t
 
     def loss_recond(self, batch):
         cond = self.get_learned_conditioning(batch["style"]["caption"])
@@ -1083,6 +1098,9 @@ class LatentDiffusion(DDPM):
 
 
     def latent_shift(self, batch, optimizer_idx):
+
+        caption = batch["base"]["caption"]
+        
 
         caption = batch["base"]["caption"]
         cond = self.get_learned_conditioning(caption)
@@ -1144,23 +1162,75 @@ class LatentDiffusion(DDPM):
 
         return loss_base, loss2
 
+    def clip_loss(self, batch):
+        
+        text_tokens = clip.tokenize(["rabbit"]).cuda()
+
+        img2 = rearrange(batch["base"]["image"], 'b h w c -> b c h w')
+        img2 = img2.to(memory_format=torch.contiguous_format).float()
+        img2 = self.encode_first_stage(img2)
+        z_R = self.get_first_stage_encoding(img2).detach()
+
+        caption = batch["base"]["caption"]
+        cond = self.get_learned_conditioning(caption)
+
+        t = torch.randint(0, self.num_timesteps, (z_R.shape[0],), device=self.device).long()
+        logvar_t = self.logvar[t.cpu()].to(self.device)
+        
+        noise = default(None, lambda: torch.randn_like(z_R))
+        x_noisy = self.q_sample(x_start=z_R, t=t, noise=noise)
+        noise1 = self.apply_model(x_noisy, t, cond)
+        z_theta = self.predict_start_from_noise(x_noisy,t,noise1)
+        image = self.decode_first_stage(z_theta)
+
+        image_features = self.clip_model.encode_image(image[:,:,0:224,0:224]).float()
+        text_features = self.clip_model.encode_text(text_tokens).float()
+
+        # image_features /= image_features.norm(dim=-1, keepdim=True)
+        # text_features /= text_features.norm(dim=-1, keepdim=True)
+        similarity = self.get_loss(image_features, text_features).mean()
+
+        return similarity
+
+    def make_images(self, batch):
+        # pdb.set_trace()
+        batch = batch["base"]
+        use_ddim = 50
+        z, c, x, xrec, xc = self.get_input(batch, self.first_stage_key,
+                                           return_first_stage_outputs=True,
+                                           force_c_encode=True,
+                                           return_original_cond=True,
+                                           bs=1)
+
+        uc = self.get_learned_conditioning(len(c) * [""])
+        sample_scaled, _ = self.sample_log(cond=c, 
+                                            batch_size=1, 
+                                            ddim=False, 
+                                            ddim_steps=50,
+                                            eta=1.0,                                                 
+                                            unconditional_guidance_scale=5.0,
+                                            unconditional_conditioning=uc)
+
+        
+        images = self.decode_first_stage(sample_scaled)
+        images = torch.clamp((images+1.0)/2.0, min=0.0, max=1.0)
+
+        img = 0
+        for x_sample in images:
+            x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
+            name = "output_log/image"+str(self.iter)+"_"+str(img)+".jpg"
+            Image.fromarray(x_sample.astype(np.uint8)).save(name)
+            img += 1
+
     def training_step(self, batch, batch_idx,optimizer_idx=None):
         
-        # attempt1
-        # loss1, ld= self.shared_step(batch["style"])
-        # loss2 = self.custom_loss(batch, loss_type=0)
-        # loss = loss1 + 0.1 * loss2
-        
-        # attempt2
-        loss1, loss2 = self.discrimator_loss(batch, optimizer_idx=optimizer_idx)
-        loss = loss1 +  0.01 * loss2 
-
-        # attempt3
-        # loss1, loss2 = self.latent_shift(batch, optimizer_idx=optimizer_idx)
-        # loss = loss1 +  0.01 * loss2 
-
+        loss1, loss2, t = self.discrimator_loss(batch, optimizer_idx=optimizer_idx)
+        factor = (t/1000)
+        loss = (1-factor) * loss1 +  (factor) * 0.01 * loss2 
 
         self.iter += 1
+  
+        
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -1536,7 +1606,7 @@ class LatentDiffusion(DDPM):
 
     @torch.no_grad()
     def sample(self, cond, batch_size=16, return_intermediates=False, x_T=None,
-               verbose=True, timesteps=None, quantize_denoised=False,
+               verbose=True, timesteps=100, quantize_denoised=False,
                mask=None, x0=None, shape=None,**kwargs):
         if shape is None:
             shape = (batch_size, self.channels, self.image_size, self.image_size)
@@ -1573,6 +1643,7 @@ class LatentDiffusion(DDPM):
                    quantize_denoised=True, inpaint=False, plot_denoise_rows=False, plot_progressive_rows=False,
                    plot_diffusion_rows=False, **kwargs):
 
+         
         batch = batch["base"]
         use_ddim = ddim_steps is not None
         log = dict()
@@ -1642,7 +1713,7 @@ class LatentDiffusion(DDPM):
                                                unconditional_conditioning=uc)
             # samples = z + samples
             log["samples_scaled"] = self.decode_first_stage(sample_scaled)
-
+             
             if quantize_denoised and not isinstance(self.first_stage_model, AutoencoderKL) and not isinstance(
                     self.first_stage_model, IdentityFirstStage):
                 # also display when quantizing x0 while sampling
@@ -1702,10 +1773,15 @@ class LatentDiffusion(DDPM):
 
         params = list(self.model.parameters())
         opt = torch.optim.AdamW(params, lr=lr)
-        # opt = torch.optim.AdamW(params, lr=lr, betas = (b1, b2))
+        # params = list(self.generator.parameters())
+        # opt = torch.optim.AdamW(params, lr=0.1)
+
+        # params = list(self.cond_stage_model.parameters())
+        # opt = torch.optim.AdamW(params, lr=lr*100)
 
         params2 = list(self.discriminator.parameters())
         opt2 = torch.optim.AdamW(params2, lr=lr*10)
+        # opt2 = torch.optim.AdamW(params2, lr=0.1)
         # opt2 = torch.optim.AdamW(params2, lr=lr*10, betas = (b1, b2))
 
 
@@ -1722,6 +1798,11 @@ class LatentDiffusion(DDPM):
         # return opt
         return [opt, opt2], []
 
+    # def on_save_checkpoint(self, checkpoint):
+        
+    #     pdb.set_trace()
+    #     path = os.path.join(self.trainer.checkpoint_callback.dirpath, "iter"+str(self.iter)+".ckpt")
+    #     self.model.save(path)
 
     @torch.no_grad()
     def to_rgb(self, x):

@@ -1,0 +1,10 @@
+[x] test how it works by changing weighing ratios over t 
+[] make it work on 64x 64 
+[] understand how to incorporate learned concepts of the words into it 
+[] make branches: branches that learn "style", "letter" and discriminator branch 
+
+restrict the input noise, to something that works for us?
+i can try making a noise generator. that only generates noises
+that work for me.
+so it will stay within "rabbit" word latent space of prelearned generatorb
+but will make sure that noises being sent, only get us the required ones 

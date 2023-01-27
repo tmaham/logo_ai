@@ -4,19 +4,17 @@ import torch
 import numpy as np
 from tqdm import tqdm
 from functools import partial
-
+import pdb 
 from ldm.modules.diffusionmodules.util import make_ddim_sampling_parameters, make_ddim_timesteps, noise_like, \
     extract_into_tensor
 
-import pdb 
 
 class DDIMSampler(object):
-    def __init__(self, model, schedule="linear", print=True, **kwargs):
+    def __init__(self, model, schedule="linear", **kwargs):
         super().__init__()
         self.model = model
         self.ddpm_num_timesteps = model.num_timesteps
         self.schedule = schedule
-        self.print = print
 
     def register_buffer(self, name, attr):
         if type(attr) == torch.Tensor:
@@ -93,8 +91,7 @@ class DDIMSampler(object):
         # sampling
         C, H, W = shape
         size = (batch_size, C, H, W)
-        if self.print:
-            print(f'Data shape for DDIM sampling is {size}, eta {eta}')
+        print(f'Data shape for DDIM sampling is {size}, eta {eta}')
 
         samples, intermediates = self.ddim_sampling(conditioning, size,
                                                     callback=callback,
@@ -136,12 +133,9 @@ class DDIMSampler(object):
         intermediates = {'x_inter': [img], 'pred_x0': [img]}
         time_range = reversed(range(0,timesteps)) if ddim_use_original_steps else np.flip(timesteps)
         total_steps = timesteps if ddim_use_original_steps else timesteps.shape[0]
-        
-        if self.print:
-            print(f"Running DDIM Sampling with {total_steps} timesteps")
-            iterator = tqdm(time_range,desc='DDIM Sampler', total=total_steps)
-        else:
-            iterator = tqdm(time_range, desc='DDIM Sampler', total=total_steps, disable=True)
+        print(f"Running DDIM Sampling with {total_steps} timesteps")
+
+        iterator = tqdm(time_range, desc='DDIM Sampler', total=total_steps)
 
         for i, step in enumerate(iterator):
             index = total_steps - i - 1
@@ -151,6 +145,7 @@ class DDIMSampler(object):
                 assert x0 is not None
                 img_orig = self.model.q_sample(x0, ts)  # TODO: deterministic forward pass?
                 img = img_orig * mask + (1. - mask) * img
+
             outs = self.p_sample_ddim(img, cond, ts, index=index, use_original_steps=ddim_use_original_steps,
                                       quantize_denoised=quantize_denoised, temperature=temperature,
                                       noise_dropout=noise_dropout, score_corrector=score_corrector,

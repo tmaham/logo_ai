@@ -5,7 +5,7 @@ import torch
 
 import torchvision
 import pytorch_lightning as pl
-from random import randrange
+
 from packaging import version
 from omegaconf import OmegaConf
 from torch.utils.data import random_split, DataLoader, Dataset, Subset
@@ -111,7 +111,7 @@ def get_parser(**parser_kwargs):
         "-s",
         "--seed",
         type=int,
-        default=55,
+        default=23,
         help="seed for seed_everything",
     )
     parser.add_argument(
@@ -147,7 +147,7 @@ def get_parser(**parser_kwargs):
 
     parser.add_argument("--actual_resume", 
         type=str,
-        required=False,
+        required=True,
         help="Path to model to actually resume from")
 
     parser.add_argument("--data_root", 
@@ -164,9 +164,6 @@ def get_parser(**parser_kwargs):
         type=str, 
         help="Placeholder string which will be used to denote the concept in future prompts. Overwrites the config options.")
 
-    parser.add_argument("--init_word", 
-        type=str, 
-        help="Word to use as source for initial token embedding")
 
     return parser
 
@@ -574,8 +571,7 @@ if __name__ == "__main__":
 
     ckptdir = os.path.join(logdir, "checkpoints")
     cfgdir = os.path.join(logdir, "configs")
-    
-    seed_everything(randrange(100))
+    seed_everything(opt.seed)
 
     try:
         # init and save configs
@@ -794,8 +790,8 @@ if __name__ == "__main__":
             except Exception:
                 melk()
                 raise
-        if not opt.no_test and not trainer.interrupted:
-            trainer.test(model, data)
+        # if not opt.no_test and not trainer.interrupted:
+        #     trainer.test(model, data)
     except Exception:
         if opt.debug and trainer.global_rank == 0:
             try:

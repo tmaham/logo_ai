@@ -1,3 +1,9 @@
+diffuse bt steps
+
+diffuse a little bit into the new category over time 
+
+if i want to make it a font set, then i need to make sure they all look the same
+
 use a latent as starting point to generate somethin
 look at img2img in the stable diffusion 
 
@@ -44,3 +50,5 @@ NEXT
 2) change how the style is learned, change it to textual rather than images 
 
 
+within the latent space, find what matches the sillhoute of the letter
+and then use that only to mould the shape 

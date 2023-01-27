@@ -6,6 +6,7 @@ from PIL import Image
 from tqdm import tqdm, trange
 from einops import rearrange
 from torchvision.utils import make_grid
+from pytorch_lightning import seed_everything
 
 from ldm.util import instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
@@ -101,6 +102,12 @@ if __name__ == "__main__":
         default=5.0,
         help="unconditional guidance scale: eps = eps(x, empty) + scale * (eps(x, cond) - eps(x, empty))",
     )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="the seed (for reproducible sampling)",
+    )
 
     parser.add_argument(
         "--ema",
@@ -119,7 +126,7 @@ if __name__ == "__main__":
         help="Path to a pre-trained embedding manager checkpoint")
 
     opt = parser.parse_args()
-
+    seed_everything(opt.seed)
 
     # config = OmegaConf.load("configs/latent-diffusion/txt2img-1p4B-eval_with_tokens.yaml")  # TODO: Optionally download from same location as ckpt and chnage this logic
     config = OmegaConf.load("configs/finetune/finetune.yaml")
@@ -144,6 +151,8 @@ if __name__ == "__main__":
     sample_path = os.path.join(outpath, "samples")
     os.makedirs(sample_path, exist_ok=True)
     base_count = len(os.listdir(sample_path))
+    start_code = None
+    # start_code = torch.randn([opt.n_samples, 4, 32, 32], device=device)
 
     all_samples=list()
     with torch.no_grad():
