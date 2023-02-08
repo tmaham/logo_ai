@@ -1,0 +1,6 @@
+data/
+ckpt/
+checkpoints/
+logs/
+make_data/
+outputs/
