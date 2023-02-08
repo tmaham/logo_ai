@@ -1,17 +1,12 @@
-
-
-its ruining the concept of "rabbit" i need to ensure it stays similar...
-i can try to make sure that a codeword works but makes it similar to rabbit. 
-
-fine tune on letter (or word)
-use images of original concept
-
-use somethign to bridge them 
-
 force to generate within the area, the further it goes the less the probability of something being there
 
-basically discourage anything outside the required area. 
+Problems
+1) backgrounds are not white. (can use a thirdparty image library)
+2) input images need to be diverse enough to match the letter (maybe generate input images based on given letter)
 
-also train using original generated latents. just generate 100 or so, and use it. 
 
+Next:
+use some sort of distance thing to ensure sillhoutes are matching. this can be used not only to generate relevant data, but also 
+stylize whole word. 
 
+FOcus on area: make a map that focuses on a random area.

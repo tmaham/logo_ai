@@ -22,6 +22,7 @@ from tqdm import tqdm, trange
 from torchvision.utils import save_image
 import pandas as pd
 
+
 from ldm.util import log_txt_as_img, exists, default, ismap, isimage, mean_flat, count_params, instantiate_from_config
 from ldm.modules.ema import LitEma
 from ldm.modules.distributions.distributions import normal_kl, DiagonalGaussianDistribution
@@ -446,6 +447,8 @@ class LatentDiffusion(DDPM):
                  cond_stage_forward=None,
                  conditioning_key=None,
                  scale_factor=1.0,
+                 factor = 0.01,
+                 finetune_org = True,
                  scale_by_std=False,
                  discriminator_config=None,
                  generator_config=None,
@@ -478,6 +481,8 @@ class LatentDiffusion(DDPM):
         self.cond_stage_forward = cond_stage_forward
         self.clip_denoised = False
         self.bbox_tokenizer = None  
+        self.factor = factor
+        self.finetune_org = finetune_org
 
         self.restarted_from_ckpt = False
         if ckpt_path is not None:
@@ -1277,15 +1282,12 @@ class LatentDiffusion(DDPM):
             loss, ld = self.shared_step(batch["style"])
         if optimizer_idx<=1:
             loss_base, loss = self.discrimator_loss(batch, optimizer_idx=optimizer_idx)
-            factor=0.01
             if loss_base is not None:
-                loss = loss_base+factor*loss 
+                loss = loss_base+self.factor*loss 
             else:
-                loss = factor*loss 
+                loss = self.factor*loss 
 
-        # loss, ld = self.shared_step(batch["style"])
         self.iter += 1
-  
         
         return loss
 
@@ -1849,8 +1851,11 @@ class LatentDiffusion(DDPM):
             return [opt], scheduler
 
         # return opt
-        return [opt, opt2], []
-        # return [opt, opt2,opt], []
+        if self.finetune_org:
+            return [opt, opt2, opt], []
+        else:
+            return [opt, opt2], []
+        
         # return [opt, opt]
 
     # @rank_zero_only
