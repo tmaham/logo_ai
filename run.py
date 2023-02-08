@@ -10,7 +10,7 @@ command = "python main_finetune.py --base configs/finetune/finetune.yaml \
             -t \
             -n test \
             --gpus 0, \
-            --actual_resume ckpt/sd-v1-1.ckpt\
+            --actual_resume ckpt/model.ckpt\
             --data_root data/rabbit" 
 
 os.system(command)

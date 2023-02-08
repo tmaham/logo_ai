@@ -1,10 +1,17 @@
-[x] test how it works by changing weighing ratios over t 
-[] make it work on 64x 64 
-[] understand how to incorporate learned concepts of the words into it 
-[] make branches: branches that learn "style", "letter" and discriminator branch 
 
-restrict the input noise, to something that works for us?
-i can try making a noise generator. that only generates noises
-that work for me.
-so it will stay within "rabbit" word latent space of prelearned generatorb
-but will make sure that noises being sent, only get us the required ones 
+
+its ruining the concept of "rabbit" i need to ensure it stays similar...
+i can try to make sure that a codeword works but makes it similar to rabbit. 
+
+fine tune on letter (or word)
+use images of original concept
+
+use somethign to bridge them 
+
+force to generate within the area, the further it goes the less the probability of something being there
+
+basically discourage anything outside the required area. 
+
+also train using original generated latents. just generate 100 or so, and use it. 
+
+

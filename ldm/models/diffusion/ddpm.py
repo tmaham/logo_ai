@@ -19,6 +19,8 @@ from torchvision.utils import make_grid
 from pytorch_lightning.utilities.distributed import rank_zero_only
 import torchvision.transforms as T
 from tqdm import tqdm, trange
+from torchvision.utils import save_image
+import pandas as pd
 
 from ldm.util import log_txt_as_img, exists, default, ismap, isimage, mean_flat, count_params, instantiate_from_config
 from ldm.modules.ema import LitEma
@@ -483,12 +485,12 @@ class LatentDiffusion(DDPM):
             self.restarted_from_ckpt = True
 
         self.discriminator = instantiate_from_config(discriminator_config)
-        self.generator = instantiate_from_config(generator_config)
+        # self.generator = instantiate_from_config(generator_config)
 
 
         self.iter = 1
 
-        self.clip_model, preprocess = clip.load("ViT-L/14", device="cuda")
+        # self.clip_model, preprocess = clip.load("ViT-L/14", device="cuda")
 
         shape = [1,4,32,32]
         self.noise = default(None, lambda: torch.randn(shape)).cuda()
@@ -938,7 +940,7 @@ class LatentDiffusion(DDPM):
 
         return loss
 
-    def ExpWeight(self, step, gamma=1, max_iter=5000, reverse=False):
+    def ExpWeight(self, step, gamma=1, max_iter=1500, reverse=False):
         step = max_iter-step
         ans = 1.0 * (np.exp(- gamma * step * 1.0 / max_iter))
         return float(ans)
@@ -1009,8 +1011,7 @@ class LatentDiffusion(DDPM):
         real_label = 1.
         fake_label = 0.
 
-        # caption = batch["base"]["caption"]
-        caption = "rabbit okramun"
+        caption = batch["cond"]
         cond = self.get_learned_conditioning(caption)
 
 
@@ -1031,30 +1032,34 @@ class LatentDiffusion(DDPM):
         logvar_t = self.logvar[t.cpu()].to(self.device)
         
         noise = default(None, lambda: torch.randn_like(z_S))
-        
-        # noise_in = torch.randn(z_S.shape[0], 100, 1, 1, device="cuda")
-        # noise = self.generator(noise_in)
 
         x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
-        noise1 = self.apply_model(x_noisy, t, cond)
-        z_theta = self.predict_start_from_noise(x_noisy,t,noise1)
-
-        fake_x = z_theta 
-
-        loss_base = self.get_loss(noise1, noise, mean=False).mean([1,2,3])
-        loss_base = loss_base / torch.exp(logvar_t) + logvar_t
-        loss_base = self.l_simple_weight * loss_base.mean()
-
+        
         letter = batch["number"][0].cpu().detach().numpy()
 
         #update generator
         if optimizer_idx == 0:
+            noise1 = self.apply_model(x_noisy, t, cond)
+            z_theta = self.predict_start_from_noise(x_noisy,t,noise1)
+            fake_x = z_theta 
+
+            loss_base = self.get_loss(noise1, noise, mean=False).mean([1,2,3])
+            loss_base = loss_base / torch.exp(logvar_t) + logvar_t
+            loss_base = self.l_simple_weight * loss_base.mean()
+
             label = torch.full((1,), real_label, dtype=torch.float, device="cuda")
+
             output = self.discriminator(fake_x, letter).view(-1)
             loss = criterion(output, label)
 
+            return loss_base, loss
+
         #update discriminator
         if optimizer_idx == 1:
+            noise1 = self.apply_model(x_noisy, t, cond).detach()
+            z_theta = self.predict_start_from_noise(x_noisy,t,noise1)
+            fake_x = z_theta 
+
             label = torch.full((1,), real_label, dtype=torch.float, device="cuda")
             output = self.discriminator(real_x, letter).view(-1)
             loss1 = criterion(output, label)
@@ -1065,14 +1070,50 @@ class LatentDiffusion(DDPM):
 
             loss = (loss1+loss2)/2
 
+            return None, loss
 
-        loss2=loss
-        # loss2= loss/ torch.exp(logvar_t) + logvar_t
 
-        return loss_base, loss2, t
+    def prob_loss(self, batch):
+        img1 = rearrange(batch["style"]["image"], 'b h w c -> b c h w')
+        img1 = img1.to(memory_format=torch.contiguous_format).float()
+        img1 = self.encode_first_stage(img1)
+        z_S = self.get_first_stage_encoding(img1).detach()
+        # z_S[z_S>0]= 1
+        # z_S[z_S<0]= 0
+        img2 = rearrange(batch["base"]["image"], 'b h w c -> b c h w')
+        img2 = img2.to(memory_format=torch.contiguous_format).float()
+        img2 = self.encode_first_stage(img2)
+        z_R = self.get_first_stage_encoding(img2).detach()
+        # z_R[z_R>0]= 1
+        # z_R[z_R<0]= 0
+
+        caption = batch["cond"]
+        cond = self.get_learned_conditioning(caption)
+
+        t = torch.randint(0, self.num_timesteps, (z_S.shape[0],), device=self.device).long()
+        logvar_t = self.logvar[t.cpu()].to(self.device)
+        
+        noise = default(None, lambda: torch.randn_like(z_S))
+
+        x_noisy = self.q_sample(x_start=z_S, t=t, noise=noise)
+        noise1 = self.apply_model(x_noisy, t, cond)
+
+        loss_base = self.get_loss(noise1, noise, mean=False).mean([1,2,3])
+        loss_base = loss_base / torch.exp(logvar_t) + logvar_t
+        loss_base = self.l_simple_weight * loss_base.mean()
+        
+        z_theta = self.predict_start_from_noise(x_noisy,t,noise1)
+
+        # z_theta[z_theta>0]=1
+        # z_theta[z_theta<0]=0
+
+        criteria = nn.MSELoss()
+        loss = criteria(z_theta, z_R).mean()
+        return loss_base, loss
+
 
     def loss_recond(self, batch):
-        cond = self.get_learned_conditioning(batch["style"]["caption"])
+        cond = self.get_learned_conditioning(batch["base"]["caption"])
 
         img1 = rearrange(batch["style"]["image"], 'b h w c -> b c h w')
         img1 = img1.to(memory_format=torch.contiguous_format).float()
@@ -1090,11 +1131,13 @@ class LatentDiffusion(DDPM):
         noise1 = self.apply_model(x_noisy, t, cond)
         z_theta = self.predict_start_from_noise(x_noisy,t,noise1)
 
-        loss = self.get_loss(z_theta, z_R, mean=False).mean([1,2,3])
+        loss_style = self.get_loss(z_theta, z_R, mean=False).mean([1,2,3])
+
+        loss = self.get_loss(noise1, noise, mean=False).mean([1,2,3])
         logvar_t = self.logvar[t.cpu()].to(self.device)
         loss = loss / torch.exp(logvar_t) + logvar_t
 
-        return loss
+        return loss, loss_style
 
 
     def latent_shift(self, batch, optimizer_idx):
@@ -1224,10 +1267,23 @@ class LatentDiffusion(DDPM):
 
     def training_step(self, batch, batch_idx,optimizer_idx=None):
         
-        loss1, loss2, t = self.discrimator_loss(batch, optimizer_idx=optimizer_idx)
-        factor = (t/1000)
-        loss = (1-factor) * loss1 +  (factor) * 0.01 * loss2 
+        # if optimizer_idx == 0:
+        #     loss, ld = self.shared_step(batch["style"])
+        # else:
+        #     loss_base, loss = self.prob_loss(batch)
+        #     loss = loss_base + 0.5 * loss
 
+        if optimizer_idx == 2:
+            loss, ld = self.shared_step(batch["style"])
+        if optimizer_idx<=1:
+            loss_base, loss = self.discrimator_loss(batch, optimizer_idx=optimizer_idx)
+            factor=0.01
+            if loss_base is not None:
+                loss = loss_base+factor*loss 
+            else:
+                loss = factor*loss 
+
+        # loss, ld = self.shared_step(batch["style"])
         self.iter += 1
   
         
@@ -1294,7 +1350,7 @@ class LatentDiffusion(DDPM):
             assert len(cond) == 1  # todo can only deal with one conditioning atm
             assert not return_ids  
             ks = self.split_input_params["ks"]  # eg. (128, 128)
-            stride = self.split_input_params["stride"]  # eg. (64, 64)
+            st
 
             h, w = x_noisy.shape[-2:]
 
@@ -1643,8 +1699,11 @@ class LatentDiffusion(DDPM):
                    quantize_denoised=True, inpaint=False, plot_denoise_rows=False, plot_progressive_rows=False,
                    plot_diffusion_rows=False, **kwargs):
 
-         
+        
+        cap = batch["cond"]
         batch = batch["base"]
+        batch["caption"] = cap
+
         use_ddim = ddim_steps is not None
         log = dict()
         z, c, x, xrec, xc = self.get_input(batch, self.first_stage_key,
@@ -1768,21 +1827,15 @@ class LatentDiffusion(DDPM):
 
     def configure_optimizers(self):
         lr = self.learning_rate
-        b1 = 0.5
-        b2 = 0.999
 
         params = list(self.model.parameters())
         opt = torch.optim.AdamW(params, lr=lr)
-        # params = list(self.generator.parameters())
-        # opt = torch.optim.AdamW(params, lr=0.1)
 
         # params = list(self.cond_stage_model.parameters())
-        # opt = torch.optim.AdamW(params, lr=lr*100)
+        # opt = torch.optim.AdamW(params, lr=lr)
 
         params2 = list(self.discriminator.parameters())
         opt2 = torch.optim.AdamW(params2, lr=lr*10)
-        # opt2 = torch.optim.AdamW(params2, lr=0.1)
-        # opt2 = torch.optim.AdamW(params2, lr=lr*10, betas = (b1, b2))
 
 
         if self.use_scheduler:
@@ -1797,12 +1850,17 @@ class LatentDiffusion(DDPM):
 
         # return opt
         return [opt, opt2], []
+        # return [opt, opt2,opt], []
+        # return [opt, opt]
 
+    # @rank_zero_only
     # def on_save_checkpoint(self, checkpoint):
-        
-    #     pdb.set_trace()
-    #     path = os.path.join(self.trainer.checkpoint_callback.dirpath, "iter"+str(self.iter)+".ckpt")
-    #     self.model.save(path)
+
+    #     checkpoint.clear()
+    #     torch.save({
+    #         'model_state_dict': self.cond_stage_model.state_dict(),
+    #         }, "output_log/cond.ckpt")
+
 
     @torch.no_grad()
     def to_rgb(self, x):

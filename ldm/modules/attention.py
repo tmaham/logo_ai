@@ -6,7 +6,8 @@ from torch import nn, einsum
 from einops import rearrange, repeat
 
 from ldm.modules.diffusionmodules.util import checkpoint
-
+import pdb 
+from torchvision.utils import save_image
 
 def exists(val):
     return val is not None
@@ -168,6 +169,7 @@ class CrossAttention(nn.Module):
         )
 
     def forward(self, x, context=None, mask=None):
+
         h = self.heads
 
         q = self.to_q(x)
@@ -187,7 +189,6 @@ class CrossAttention(nn.Module):
 
         # attention, what we cannot get enough of
         attn = sim.softmax(dim=-1)
-
         out = einsum('b i j, b j d -> b i d', attn, v)
         out = rearrange(out, '(b h) n d -> b n (h d)', h=h)
         return self.to_out(out)

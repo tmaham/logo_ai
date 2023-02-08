@@ -175,13 +175,18 @@ if __name__ == "__main__":
                                                 unconditional_conditioning=uc,
                                                 eta=opt.ddim_eta)
 
-
+                
+                
+ 
                 x_samples_ddim = model.decode_first_stage(samples_ddim)
                 x_samples_ddim = torch.clamp((x_samples_ddim+1.0)/2.0, min=0.0, max=1.0)
 
+                i = 0
                 for x_sample in x_samples_ddim:
                     x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
-                    Image.fromarray(x_sample.astype(np.uint8)).save(os.path.join(sample_path, f"{base_count:04}.jpg"))
+                    name = "image"+str(i)+".jpg"
+                    Image.fromarray(x_sample.astype(np.uint8)).save("data/custom_data/"+name)
+                    i+=1
                     base_count += 1
                 all_samples.append(x_samples_ddim)
                 prompt = prompt

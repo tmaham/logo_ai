@@ -3,7 +3,7 @@ import pdb
 import torch 
 
 dcgan = True
-org64 = True
+org64 = False
 
 if org64:
     class Discriminator(nn.Module):
