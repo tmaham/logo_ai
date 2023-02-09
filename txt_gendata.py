@@ -156,6 +156,7 @@ if __name__ == "__main__":
     start_code = None
     # start_code = torch.randn([opt.n_samples, 4, 32, 32], device=device)
 
+    i = 0
     all_samples=list()
     with torch.no_grad():
         with model.ema_scope():
@@ -181,7 +182,7 @@ if __name__ == "__main__":
                 x_samples_ddim = model.decode_first_stage(samples_ddim)
                 x_samples_ddim = torch.clamp((x_samples_ddim+1.0)/2.0, min=0.0, max=1.0)
 
-                i = 0
+                
                 for x_sample in x_samples_ddim:
                     x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
                     name = "image"+str(i)+".jpg"

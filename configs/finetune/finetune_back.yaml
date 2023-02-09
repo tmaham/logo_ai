@@ -1,5 +1,5 @@
 model:
-  base_learning_rate: 1.0e-6 #1e-4
+  base_learning_rate: 1.0e-5 #1e-4
   target: ldm.models.diffusion.ddpm.LatentDiffusion
   params:
     linear_start: 0.00085
@@ -9,18 +9,20 @@ model:
     timesteps: 1000
     first_stage_key: "image"
     cond_stage_key: "caption"
-    image_size: 32
+    image_size: 64
     channels: 4
-    cond_stage_trainable: false   # Note: different from the one we trained before
+    cond_stage_trainable: False   # Note: different from the one we trained before
     conditioning_key: crossattn
     monitor: val/loss_simple_ema
     scale_factor: 0.18215
     use_ema: False
+    factor: 0.1
+    finetune_org: False
 
     unet_config:
       target: ldm.modules.diffusionmodules.openaimodel.UNetModel
       params:
-        image_size: 32 # unused
+        image_size: 64 # unused
         in_channels: 4
         out_channels: 4
         model_channels: 320
@@ -30,7 +32,7 @@ model:
         num_heads: 8
         use_spatial_transformer: True
         transformer_depth: 1
-        context_dim: 768 # 1280
+        context_dim: 768 # 768
         use_checkpoint: True
         legacy: False
 
@@ -42,7 +44,7 @@ model:
         ddconfig:
           double_z: true
           z_channels: 4
-          resolution: 256
+          resolution: 256 #256
           in_channels: 3
           out_ch: 3
           ch: 128
@@ -59,63 +61,49 @@ model:
 
     cond_stage_config:
       target: ldm.modules.encoders.modules.FrozenCLIPEmbedder
-
+    
 
     discriminator_config:
       target: ldm.modules.discriminator.Discriminator
-      params:
-        input_dims: 4096
-        hidden_dims: 2048
-
-    adapter_config:
-      target: ldm.modules.discriminator.Adapter
-      params:
-        input_dims: 4096
 
 
 data:
   target: main.DataModuleFromConfig
   params:
     batch_size: 1
-    num_workers: 2
+    num_workers: 32
     wrap: false
     train:
       target: ldm.data.rasterizer.Rasterizer
       params:
         img_size: 256
         text: "A"
-        caption: "4&*w^U&R2j"
-        caption2: "4&*w^U&R2j"
-        style_word: "4&*w^U&R2j"
-        back: "data/rabbit_ca"
-        make_full_captions: False
-        random_crop: False
-        number: 512
+        style_word: "hands"
+        images: "data/custom_data"
+        num_samples: 512
+        make_black: True
     validation:
       target: ldm.data.rasterizer.Rasterizer
       params:
         img_size: 256
-        text: "A"
-        caption: "4&*w^U&R2j"
-        caption2: "4&*w^U&R2j"
-        style_word: "4&*w^U&R2j"
-        back: "data/rabbit_ca"
-        make_full_captions: False
-        random_crop: False
-        number: 16
+        text: "R"
+        style_word: "coffee"
+        images: "data/custom_data"
+        num_samples: 16
+        make_black: False
 
 lightning:
   modelcheckpoint:
     params:
-      every_n_train_steps: 500
+      every_n_train_steps: 200
   callbacks:
     image_logger:
       target: main.ImageLogger
       params:
-        batch_frequency: 200
-        max_images: 2
+        batch_frequency: 100
+        max_images: 1
         increase_log_steps: False
 
   trainer:
     benchmark: True
-    max_steps: 1000
+    max_steps: 3000

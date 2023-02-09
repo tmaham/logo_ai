@@ -1041,30 +1041,25 @@ class LatentDiffusion(DDPM):
         x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
         
         letter = batch["number"][0].cpu().detach().numpy()
+        noise1 = self.apply_model(x_noisy, t, cond)
+        z_theta = self.predict_start_from_noise(x_noisy,t,noise1)
+        fake_x = z_theta 
 
+        loss_base = self.get_loss(noise1, noise, mean=False).mean([1,2,3])
+        loss_base = loss_base / torch.exp(logvar_t) + logvar_t
+        loss_base = self.l_simple_weight * loss_base.mean()
+        
         #update generator
         if optimizer_idx == 0:
-            noise1 = self.apply_model(x_noisy, t, cond)
-            z_theta = self.predict_start_from_noise(x_noisy,t,noise1)
-            fake_x = z_theta 
-
-            loss_base = self.get_loss(noise1, noise, mean=False).mean([1,2,3])
-            loss_base = loss_base / torch.exp(logvar_t) + logvar_t
-            loss_base = self.l_simple_weight * loss_base.mean()
+            
 
             label = torch.full((1,), real_label, dtype=torch.float, device="cuda")
 
             output = self.discriminator(fake_x, letter).view(-1)
             loss = criterion(output, label)
 
-            return loss_base, loss
-
         #update discriminator
         if optimizer_idx == 1:
-            noise1 = self.apply_model(x_noisy, t, cond).detach()
-            z_theta = self.predict_start_from_noise(x_noisy,t,noise1)
-            fake_x = z_theta 
-
             label = torch.full((1,), real_label, dtype=torch.float, device="cuda")
             output = self.discriminator(real_x, letter).view(-1)
             loss1 = criterion(output, label)
@@ -1075,7 +1070,7 @@ class LatentDiffusion(DDPM):
 
             loss = (loss1+loss2)/2
 
-            return None, loss
+        return loss_base, loss
 
 
     def prob_loss(self, batch):
@@ -1272,20 +1267,14 @@ class LatentDiffusion(DDPM):
 
     def training_step(self, batch, batch_idx,optimizer_idx=None):
         
-        # if optimizer_idx == 0:
-        #     loss, ld = self.shared_step(batch["style"])
-        # else:
-        #     loss_base, loss = self.prob_loss(batch)
-        #     loss = loss_base + 0.5 * loss
+        
 
         if optimizer_idx == 2:
             loss, ld = self.shared_step(batch["style"])
-        if optimizer_idx<=1:
+        else:
             loss_base, loss = self.discrimator_loss(batch, optimizer_idx=optimizer_idx)
-            if loss_base is not None:
-                loss = loss_base+self.factor*loss 
-            else:
-                loss = self.factor*loss 
+            loss = loss_base+self.factor*loss 
+
 
         self.iter += 1
         
@@ -1833,11 +1822,8 @@ class LatentDiffusion(DDPM):
         params = list(self.model.parameters())
         opt = torch.optim.AdamW(params, lr=lr)
 
-        # params = list(self.cond_stage_model.parameters())
-        # opt = torch.optim.AdamW(params, lr=lr)
-
         params2 = list(self.discriminator.parameters())
-        opt2 = torch.optim.AdamW(params2, lr=lr*10)
+        opt2 = torch.optim.AdamW(params2, lr=lr*100)
 
 
         if self.use_scheduler:
@@ -1856,7 +1842,6 @@ class LatentDiffusion(DDPM):
         else:
             return [opt, opt2], []
         
-        # return [opt, opt]
 
     # @rank_zero_only
     # def on_save_checkpoint(self, checkpoint):

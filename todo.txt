@@ -10,3 +10,6 @@ use some sort of distance thing to ensure sillhoutes are matching. this can be u
 stylize whole word. 
 
 FOcus on area: make a map that focuses on a random area.
+learn the mask! 
+learn where to put the mask, such that it results in good outputs 
+

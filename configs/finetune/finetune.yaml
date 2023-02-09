@@ -16,7 +16,7 @@ model:
     monitor: val/loss_simple_ema
     scale_factor: 0.18215
     use_ema: False
-    factor: 0.1
+    factor: 0.01
     finetune_org: True
 
     unet_config:
@@ -82,7 +82,7 @@ data:
       target: ldm.data.rasterizer.Rasterizer
       params:
         img_size: 256
-        text: "RABBIT"
+        text: "R"
         style_word: "rabbit"
         images: "data/rabbit_ca"
         num_samples: 512
