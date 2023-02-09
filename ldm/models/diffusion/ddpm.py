@@ -919,11 +919,17 @@ class LatentDiffusion(DDPM):
         img2 = self.get_first_stage_encoding(img2).detach()
 
         noise = default(None, lambda: torch.randn_like(img1))
-        cond1 = self.get_learned_conditioning(batch["base"]["caption"])
+        cond1 = self.get_learned_conditioning(batch["cond"])
         t = torch.randint(0, self.num_timesteps, (img1.shape[0],), device=self.device).long()
+        logvar_t = self.logvar[t.cpu()].to(self.device)
 
         img2_noisy = self.q_sample(x_start=img2, t=t, noise=noise)
         img2_out = self.apply_model(img2_noisy, t, cond1, return_ids=False)
+
+        loss_base = self.get_loss(img2_out, noise, mean=False).mean([1,2,3])
+        loss_base = loss_base / torch.exp(logvar_t) + logvar_t
+        loss_base = self.l_simple_weight * loss_base.mean()
+
         img2_rec = self.predict_start_from_noise(img2_noisy, t=t, noise=img2_out)
 
         img1_noisy = self.q_sample(x_start=img1, t=t, noise=noise)
@@ -943,7 +949,7 @@ class LatentDiffusion(DDPM):
         # loss = loss / torch.exp(logvar_t) + logvar_t
         loss = loss.mean()
 
-        return loss
+        return loss_base, loss
 
     def ExpWeight(self, step, gamma=1, max_iter=1500, reverse=False):
         step = max_iter-step
@@ -1019,7 +1025,6 @@ class LatentDiffusion(DDPM):
         caption = batch["cond"]
         cond = self.get_learned_conditioning(caption)
 
-
         img1 = rearrange(batch["style"]["image"], 'b h w c -> b c h w')
         img1 = img1.to(memory_format=torch.contiguous_format).float()
         img1 = self.encode_first_stage(img1)
@@ -1051,8 +1056,6 @@ class LatentDiffusion(DDPM):
         
         #update generator
         if optimizer_idx == 0:
-            
-
             label = torch.full((1,), real_label, dtype=torch.float, device="cuda")
 
             output = self.discriminator(fake_x, letter).view(-1)
@@ -1268,6 +1271,9 @@ class LatentDiffusion(DDPM):
     def training_step(self, batch, batch_idx,optimizer_idx=None):
         
         
+        # loss1, ld = self.shared_step(batch["style"])
+        # loss1, loss2 = self.custom_loss(batch, loss_type=0)
+        # loss = loss1 + 0.1 * loss2
 
         if optimizer_idx == 2:
             loss, ld = self.shared_step(batch["style"])

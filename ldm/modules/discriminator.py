@@ -43,12 +43,7 @@ elif dcgan:
             self.ngpu = 0
             self.mode = 2
 
-            if self.mode == 1:
-                nc = 5
-                o = 1
-            else:
-                nc = 4
-                o = 26
+            nc = 4
 
             ndf = 64
 
@@ -65,22 +60,16 @@ elif dcgan:
             self.layer4 = nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 1, bias=False)
             self.bn4 = nn.BatchNorm2d(ndf * 8)
             # state size. (ndf*8) x 4 x 4
-            self.layer5 = nn.Conv2d(ndf * 8, o, 2, 1, 0, bias=False)
+            self.layer5 = nn.Conv2d(ndf * 8, 1, 2, 1, 0, bias=False)
             self.sig = nn.Sigmoid()
         
 
         def forward(self, input, letter):
-            if self.mode == 1:
-                letter = letter/26
-                letter_layer = torch.ones([1,1,32,32])*letter
-                input = torch.cat((input, letter_layer.cuda()), dim=1)
             out = self.relu(self.layer1(input))
             out = self.relu(self.bn2(self.layer2(out)))
             out = self.relu(self.bn3(self.layer3(out)))
             out = self.relu(self.bn4(self.layer4(out)))
             out = self.sig(self.layer5(out))
-            if self.mode is not 1:
-                out = out[0][letter]
             return out
 else:
     class Discriminator(nn.Module):

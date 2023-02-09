@@ -1,4 +1,5 @@
 import os 
+import sys 
 
 command = "rm -r outputs/*"
 os.system(command)
@@ -6,7 +7,7 @@ os.system(command)
 ck = os.listdir("logs")
 li = os.path.join("logs",ck[0],"checkpoints","last.ckpt")
 
-prompt = " 'rabbit R' "
+prompt = sys.argv[1]
 command = "python txt2img.py --ddim_eta 1.0 \
                           --n_samples 5 \
                           --n_iter 5 \
