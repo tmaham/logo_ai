@@ -83,37 +83,39 @@ data:
       target: ldm.data.rasterizer.Rasterizer
       params:
         img_size: 256
-        text: "C"
-        caption: "okramun"
-        caption2: "4&*w^U&R2j"
-        style_word: "coffee"
+        text: "S"
+        # caption: "okramun"
+        # caption2: "4&*w^U&R2j"
+        style_word: "horse"
         images: "data/custom_data"
-        num_samples: 512
-        make_black: True
+        num_samples: 2000
+        make_black: False
+        one_font: False
     validation:
       target: ldm.data.rasterizer.Rasterizer
       params:
         img_size: 256
         text: "R"
-        caption: "4&*w^U&R2j"
-        caption2: "4&*w^U&R2j"
+        # caption: "4&*w^U&R2j"
+        # caption2: "4&*w^U&R2j"
         style_word: "4&*w^U&R2j"
         images: "data/custom_data"
-        num_samples: 16
+        num_samples: 1
         make_black: False
+        one_font: False
 
 lightning:
   modelcheckpoint:
     params:
-      every_n_train_steps: 200
+      every_n_train_steps: 500
   callbacks:
     image_logger:
       target: main.ImageLogger
       params:
-        batch_frequency: 100
+        batch_frequency: 200
         max_images: 1
         increase_log_steps: False
 
   trainer:
     benchmark: True
-    max_steps: 3000
+    max_steps: 2000

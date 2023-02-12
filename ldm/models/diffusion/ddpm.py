@@ -917,9 +917,13 @@ class LatentDiffusion(DDPM):
         cond1 = self.get_learned_conditioning(batch["base"]["caption"])
         t = torch.randint(0, self.num_timesteps, (img1.shape[0],), device=self.device).long()
 
+        
+        
         img2_noisy = self.q_sample(x_start=img2, t=t, noise=noise)
         img2_out = self.apply_model(img2_noisy, t, cond1, return_ids=False)
         img2_rec = self.predict_start_from_noise(img2_noisy, t=t, noise=img2_out)
+
+        loss_base = self.get_loss(img2_out, noise, mean=False).mean([1,2,3])
 
         img1_noisy = self.q_sample(x_start=img1, t=t, noise=noise)
         img1_out = self.apply_model(img1_noisy, t, cond1, return_ids=False)
@@ -938,7 +942,7 @@ class LatentDiffusion(DDPM):
         # loss = loss / torch.exp(logvar_t) + logvar_t
         loss = loss.mean()
 
-        return loss
+        return loss_base, loss
 
     def ExpWeight(self, step, gamma=1, max_iter=1500, reverse=False):
         step = max_iter-step
@@ -1056,9 +1060,13 @@ class LatentDiffusion(DDPM):
 
         #update discriminator
         if optimizer_idx == 1:
-            noise1 = self.apply_model(x_noisy, t, cond).detach()
+            noise1 = self.apply_model(x_noisy, t, cond)
             z_theta = self.predict_start_from_noise(x_noisy,t,noise1)
             fake_x = z_theta 
+
+            loss_base = self.get_loss(noise1, noise, mean=False).mean([1,2,3])
+            loss_base = loss_base / torch.exp(logvar_t) + logvar_t
+            loss_base = self.l_simple_weight * loss_base.mean()
 
             label = torch.full((1,), real_label, dtype=torch.float, device="cuda")
             output = self.discriminator(real_x, letter).view(-1)
@@ -1070,7 +1078,7 @@ class LatentDiffusion(DDPM):
 
             loss = (loss1+loss2)/2
 
-            return None, loss
+            return loss_base, loss
 
 
     def prob_loss(self, batch):
@@ -1266,7 +1274,8 @@ class LatentDiffusion(DDPM):
             img += 1
 
     def training_step(self, batch, batch_idx,optimizer_idx=None):
-        
+                
+
         # if optimizer_idx == 0:
         #     loss, ld = self.shared_step(batch["style"])
         # else:
@@ -1277,11 +1286,9 @@ class LatentDiffusion(DDPM):
             loss, ld = self.shared_step(batch["style"])
         if optimizer_idx<=1:
             loss_base, loss = self.discrimator_loss(batch, optimizer_idx=optimizer_idx)
-            factor=0.01
-            if loss_base is not None:
-                loss = loss_base+factor*loss 
-            else:
-                loss = factor*loss 
+            factor = 0.1
+            loss = loss_base+factor*loss 
+
 
         # loss, ld = self.shared_step(batch["style"])
         self.iter += 1

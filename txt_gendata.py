@@ -150,7 +150,7 @@ if __name__ == "__main__":
     prompt = opt.prompt
 
 
-    sample_path = os.path.join(outpath, "samples")
+    sample_path = os.path.join(outpath)
     os.makedirs(sample_path, exist_ok=True)
     base_count = len(os.listdir(sample_path))
     start_code = None
@@ -185,19 +185,19 @@ if __name__ == "__main__":
                 for x_sample in x_samples_ddim:
                     x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
                     name = "image"+str(i)+".jpg"
-                    Image.fromarray(x_sample.astype(np.uint8)).save("data/custom_data/"+name)
+                    Image.fromarray(x_sample.astype(np.uint8)).save(opt.outdir+"/"+name)
                     i+=1
                     base_count += 1
-                all_samples.append(x_samples_ddim)
-                prompt = prompt
+                # all_samples.append(x_samples_ddim)
+                # prompt = prompt
 
-    # additionally, save as grid
-    grid = torch.stack(all_samples, 0)
-    grid = rearrange(grid, 'n b c h w -> (n b) c h w')
-    grid = make_grid(grid, nrow=opt.n_samples)
+    # # additionally, save as grid
+    # grid = torch.stack(all_samples, 0)
+    # grid = rearrange(grid, 'n b c h w -> (n b) c h w')
+    # grid = make_grid(grid, nrow=opt.n_samples)
 
-    # to image
-    grid = 255. * rearrange(grid, 'c h w -> h w c').cpu().numpy()
-    Image.fromarray(grid.astype(np.uint8)).save(os.path.join(outpath, f'{prompt.replace(" ", "-")}.jpg'))
+    # # to image
+    # grid = 255. * rearrange(grid, 'c h w -> h w c').cpu().numpy()
+    # Image.fromarray(grid.astype(np.uint8)).save(os.path.join(outpath, f'{prompt.replace(" ", "-")}.jpg'))
 
-    print(f"Your samples are ready and waiting four you here: \n{outpath} \nEnjoy.")
+    # print(f"Your samples are ready and waiting four you here: \n{outpath} \nEnjoy.")

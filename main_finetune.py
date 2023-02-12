@@ -5,7 +5,7 @@ import torch
 
 import torchvision
 import pytorch_lightning as pl
-
+import pdb
 from packaging import version
 from omegaconf import OmegaConf
 from torch.utils.data import random_split, DataLoader, Dataset, Subset
@@ -163,6 +163,33 @@ def get_parser(**parser_kwargs):
     parser.add_argument("--placeholder_string", 
         type=str, 
         help="Placeholder string which will be used to denote the concept in future prompts. Overwrites the config options.")
+    
+    parser.add_argument(
+        "--letter",
+        type=str,
+    )
+
+    parser.add_argument(
+        "--style_word",
+        type=str,
+    )
+
+    parser.add_argument(
+        "--images",
+        type=str,
+    )
+
+    parser.add_argument(
+        "--black",
+        type=str2bool,
+        default=False
+    )
+
+    parser.add_argument(
+        "--one_font",
+        type=str2bool,
+        default=False
+    )
 
 
     return parser
@@ -730,6 +757,13 @@ if __name__ == "__main__":
         trainer.logdir = logdir  ###
 
         # data
+        # pdb.set_trace()
+        config.data.params.train.params.text = opt.letter
+        config.data.params.train.params.style_word = opt.style_word
+        config.data.params.train.params.images = opt.images
+        config.data.params.train.params.make_black = opt.black
+        config.data.params.train.params.one_font = opt.one_font
+
         data = instantiate_from_config(config.data)
         # NOTE according to https://pytorch-lightning.readthedocs.io/en/latest/datamodules.html
         # calling these ourselves should not be necessary but it is.
