@@ -1,9 +1,9 @@
 import os 
 
-n = "SHARK"
-l = "A"
-black = True
-one_font = False
+n="'GORILLA'"
+l = "R"
+black = False
+one_font = True
 
 command = "mkdir data/"+n
 
@@ -33,9 +33,17 @@ command = "python main_finetune.py --base configs/finetune/finetune.yaml \
 
 os.system(command)
 
-# out_dir = "final_outputs"+setting+"/"+n+"/"+l
-
-name_out = "final_outputs/" + n + "/" +l
+# 
+if black:
+    if one_font:
+        name_out = "final_outputs_black_one"+"/"+n+"/"+l
+    else:
+        name_out = "final_outputs_black"+"/"+n+"/"+l
+else:
+    if one_font:
+        name_out = "final_outputs/" + n + "/" +l
+    else:
+        name_out = "final_outputs_one/" + n + "/" +l
 
 command = "mkdir -p " + name_out
 os.system(command)

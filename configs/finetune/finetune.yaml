@@ -88,9 +88,10 @@ data:
         # caption2: "4&*w^U&R2j"
         style_word: "horse"
         images: "data/custom_data"
-        num_samples: 2000
+        num_samples: 10000
         make_black: False
         one_font: False
+        full_word: True
     validation:
       target: ldm.data.rasterizer.Rasterizer
       params:
@@ -103,19 +104,20 @@ data:
         num_samples: 1
         make_black: False
         one_font: False
+        full_word: True
 
 lightning:
   modelcheckpoint:
     params:
-      every_n_train_steps: 500
+      every_n_train_steps: 2000
   callbacks:
     image_logger:
       target: main.ImageLogger
       params:
-        batch_frequency: 200
+        batch_frequency: 100
         max_images: 1
         increase_log_steps: False
 
   trainer:
     benchmark: True
-    max_steps: 2000
+    max_steps: 2001

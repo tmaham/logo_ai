@@ -1,11 +1,9 @@
 import os 
 
-name = ["SHARK", "BEAR", "BAKER", "GORILLA", "HORSE","GOLF", "BABY"
-        ,"HAT","PRINCE","RUGBY","ORIGAMI","VIOLIN","UNICORN","ASTRONAUT","CLOUD","COAT","SOCKS", "PILOT",
-        "PANTS","DRESS","SINGER","RUNNING","GIRAFFE","SURFING"]
+name = ["MERMAID"]
 
-black = True
-one_font = False
+black = False
+one_font = True
 
 
 for n in name:
@@ -35,11 +33,21 @@ for n in name:
             --actual_resume ckpt/model.ckpt\
             --data_root data/rabbit " + "--letter "\
              + l + " --style_word " + n + \
-            (" --black" if black else " ") + (" --one_font" if one_font else " ") + " --images data/" +n 
+            (" --black True" if black else " ") + (" --one_font True" if one_font else " ") + " --images data/" +n 
 
         os.system(command)
 
-        name_out = "final_outputs/" + n + "/" +l
+        if black:
+            if one_font:
+                name_out = "final_outputs_black_one"+"/"+n+"/"+l
+            else:
+                name_out = "final_outputs_black"+"/"+n+"/"+l
+        else:
+            if one_font:
+                name_out = "final_outputs_one/" + n + "/" +l
+            else:
+                name_out = "final_outputs/" + n + "/" +l
+
         command = "mkdir -p " + name_out
         os.system(command)
 

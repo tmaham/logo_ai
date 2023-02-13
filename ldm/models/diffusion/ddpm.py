@@ -448,7 +448,7 @@ class LatentDiffusion(DDPM):
                  scale_factor=1.0,
                  scale_by_std=False,
                  discriminator_config=None,
-                 generator_config=None,
+                 masker_config=None,
                  *args, **kwargs):
         self.num_timesteps_cond = default(num_timesteps_cond, 1)
         self.scale_by_std = scale_by_std
@@ -485,15 +485,8 @@ class LatentDiffusion(DDPM):
             self.restarted_from_ckpt = True
 
         self.discriminator = instantiate_from_config(discriminator_config)
-        # self.generator = instantiate_from_config(generator_config)
-
-
+        self.mask = torch.ones([1,1,32,32]).cuda()
         self.iter = 1
-
-        # self.clip_model, preprocess = clip.load("ViT-L/14", device="cuda")
-
-        shape = [1,4,32,32]
-        self.noise = default(None, lambda: torch.randn(shape)).cuda()
 
     def make_cond_schedule(self, ):
         self.cond_ids = torch.full(size=(self.num_timesteps,), fill_value=self.num_timesteps - 1, dtype=torch.long)
@@ -1041,11 +1034,26 @@ class LatentDiffusion(DDPM):
         
         letter = batch["number"][0].cpu().detach().numpy()
 
+        # self.mask = self.mask * 0
+        # # self.mask[:,:,0:32,16:32] = 1
+        # self.mask[:,:,0:32,0:16] = 1
+        # save_image(self.mask[0], "mask.png")
+
+        # noise_mask = default(None, lambda: torch.randn_like(self.mask))
+        # noise_mask = noise_mask * self.mask
+        # save_image(noise_mask[0], "mask_noise.png")
+        # real_x  = real_x + (noise_mask)
+        # save_image(real_x[0,0,:,:], "mask_real0.png")
+        # save_image(real_x[0,1,:,:], "mask_real1.png")
+        # save_image(real_x[0,2,:,:], "mask_real2.png")
+
         #update generator
         if optimizer_idx == 0:
+            
             noise1 = self.apply_model(x_noisy, t, cond)
             z_theta = self.predict_start_from_noise(x_noisy,t,noise1)
-            fake_x = z_theta 
+            fake_x = z_theta
+            
 
             loss_base = self.get_loss(noise1, noise, mean=False).mean([1,2,3])
             loss_base = loss_base / torch.exp(logvar_t) + logvar_t
@@ -1062,14 +1070,14 @@ class LatentDiffusion(DDPM):
         if optimizer_idx == 1:
             noise1 = self.apply_model(x_noisy, t, cond)
             z_theta = self.predict_start_from_noise(x_noisy,t,noise1)
-            fake_x = z_theta 
+            fake_x = z_theta
 
             loss_base = self.get_loss(noise1, noise, mean=False).mean([1,2,3])
             loss_base = loss_base / torch.exp(logvar_t) + logvar_t
             loss_base = self.l_simple_weight * loss_base.mean()
 
             label = torch.full((1,), real_label, dtype=torch.float, device="cuda")
-            output = self.discriminator(real_x, letter).view(-1)
+            output = self.discriminator(real_x, letter, fake_x).view(-1)
             loss1 = criterion(output, label)
 
             label = torch.full((1,), fake_label, dtype=torch.float, device="cuda")
@@ -1286,7 +1294,7 @@ class LatentDiffusion(DDPM):
             loss, ld = self.shared_step(batch["style"])
         if optimizer_idx<=1:
             loss_base, loss = self.discrimator_loss(batch, optimizer_idx=optimizer_idx)
-            factor = 0.1
+            factor = 0.01
             loss = loss_base+factor*loss 
 
 
@@ -1357,7 +1365,6 @@ class LatentDiffusion(DDPM):
             assert len(cond) == 1  # todo can only deal with one conditioning atm
             assert not return_ids  
             ks = self.split_input_params["ks"]  # eg. (128, 128)
-            st
 
             h, w = x_noisy.shape[-2:]
 
@@ -1835,14 +1842,16 @@ class LatentDiffusion(DDPM):
     def configure_optimizers(self):
         lr = self.learning_rate
 
+
         params = list(self.model.parameters())
         opt = torch.optim.AdamW(params, lr=lr)
+
 
         # params = list(self.cond_stage_model.parameters())
         # opt = torch.optim.AdamW(params, lr=lr)
 
-        params2 = list(self.discriminator.parameters())
-        opt2 = torch.optim.AdamW(params2, lr=lr*10)
+        params = list(self.discriminator.parameters())
+        opt2 = torch.optim.AdamW(params, lr=lr*10)
 
 
         if self.use_scheduler:
