@@ -4,7 +4,7 @@ name = ["MERMAID"]
 
 black = False
 one_font = True
-
+analysis = False
 
 for n in name:
     command = "mkdir data/"+n
@@ -39,14 +39,14 @@ for n in name:
 
         if black:
             if one_font:
-                name_out = "final_outputs_black_one"+"/"+n+"/"+l
+                name_out = "final_outputs/one/black/"+n+"/"+l
             else:
-                name_out = "final_outputs_black"+"/"+n+"/"+l
+                name_out = "final_outputs/all/black/"+n+"/"+l
         else:
             if one_font:
-                name_out = "final_outputs_one/" + n + "/" +l
+                name_out = "final_outputs/one/color/" + n + "/" +l
             else:
-                name_out = "final_outputs/" + n + "/" +l
+                name_out = "final_outputs/all/color/" + n + "/" +l
 
         command = "mkdir -p " + name_out
         os.system(command)
@@ -62,3 +62,11 @@ for n in name:
                                 --scale 5.0\
                                 --outdir " + name_out + " --ckpt " +li +" --prompt" + prompt
         os.system(command)
+
+        letter = l
+        name = n
+        mode = "one" if one_font else "all"
+        color = "black" if black else "color"
+
+        command = f"python ranking/main.py {name} {letter} {mode} {color}"
+        if analysis : os.system(command)

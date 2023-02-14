@@ -59,4 +59,4 @@ for n in name:
                             --ddim_steps 50 \
                             --scale 5.0\
                             --outdir " + name_out + " --ckpt " +li +" --prompt" + prompt
-    os.system(command)
+    # os.system(command)

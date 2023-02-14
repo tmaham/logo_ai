@@ -1,17 +1,2 @@
-
-
-its ruining the concept of "rabbit" i need to ensure it stays similar...
-i can try to make sure that a codeword works but makes it similar to rabbit. 
-
-fine tune on letter (or word)
-use images of original concept
-
-use somethign to bridge them 
-
-force to generate within the area, the further it goes the less the probability of something being there
-
-basically discourage anything outside the required area. 
-
-also train using original generated latents. just generate 100 or so, and use it. 
-
-
+[1] share the ranking results
+[2] apply the masking procedure

@@ -488,6 +488,9 @@ class LatentDiffusion(DDPM):
         self.mask = torch.ones([1,1,32,32]).cuda()
         self.iter = 1
 
+        # self.clip_img = clipimg("ViT-L/14") 
+        # self.clip_txt = cliptxt("ViT-L/14")
+
     def make_cond_schedule(self, ):
         self.cond_ids = torch.full(size=(self.num_timesteps,), fill_value=self.num_timesteps - 1, dtype=torch.long)
         ids = torch.round(torch.linspace(0, self.num_timesteps - 1, self.num_timesteps_cond)).long()
@@ -1001,9 +1004,20 @@ class LatentDiffusion(DDPM):
         loss = loss / torch.exp(logvar_t) + logvar_t
 
         return loss
+    
+    def get_clip_similarity(self, real, fake, style_word):
+        # real = self.differentiable_decode_first_stage(real)
+        fake = self.differentiable_decode_first_stage(fake)
+        # real_clip = self.clip_img(real)
+        fake_clip = self.clip_img(fake)
+        txt_clip = self.clip_txt(style_word)
+        similarity = txt_clip.float() @ fake_clip.float().T
+        
+        return similarity
 
     def discrimator_loss(self, batch, optimizer_idx =0):
         criterion = nn.BCELoss()
+        l1loss = nn.L1Loss()
 
         real_label = 1.
         fake_label = 0.
@@ -1034,23 +1048,12 @@ class LatentDiffusion(DDPM):
         
         letter = batch["number"][0].cpu().detach().numpy()
 
-        # self.mask = self.mask * 0
-        # # self.mask[:,:,0:32,16:32] = 1
-        # self.mask[:,:,0:32,0:16] = 1
-        # save_image(self.mask[0], "mask.png")
-
-        # noise_mask = default(None, lambda: torch.randn_like(self.mask))
-        # noise_mask = noise_mask * self.mask
-        # save_image(noise_mask[0], "mask_noise.png")
-        # real_x  = real_x + (noise_mask)
-        # save_image(real_x[0,0,:,:], "mask_real0.png")
-        # save_image(real_x[0,1,:,:], "mask_real1.png")
-        # save_image(real_x[0,2,:,:], "mask_real2.png")
-
         #update generator
         if optimizer_idx == 0:
             
             noise1 = self.apply_model(x_noisy, t, cond)
+            save_image(noise1, "noise1_gen.png")
+
             z_theta = self.predict_start_from_noise(x_noisy,t,noise1)
             fake_x = z_theta
             
@@ -1063,7 +1066,6 @@ class LatentDiffusion(DDPM):
 
             output = self.discriminator(fake_x, letter).view(-1)
             loss = criterion(output, label)
-
             return loss_base, loss
 
         #update discriminator
@@ -1071,6 +1073,7 @@ class LatentDiffusion(DDPM):
             noise1 = self.apply_model(x_noisy, t, cond)
             z_theta = self.predict_start_from_noise(x_noisy,t,noise1)
             fake_x = z_theta
+            save_image(noise1, "noise1_dis.png")
 
             loss_base = self.get_loss(noise1, noise, mean=False).mean([1,2,3])
             loss_base = loss_base / torch.exp(logvar_t) + logvar_t
@@ -1295,7 +1298,7 @@ class LatentDiffusion(DDPM):
         if optimizer_idx<=1:
             loss_base, loss = self.discrimator_loss(batch, optimizer_idx=optimizer_idx)
             factor = 0.01
-            loss = loss_base+factor*loss 
+            loss = loss_base+factor*loss
 
 
         # loss, ld = self.shared_step(batch["style"])
