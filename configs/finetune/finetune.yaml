@@ -88,6 +88,7 @@ data:
         # caption2: "4&*w^U&R2j"
         style_word: "horse"
         images: "data/custom_data"
+        images2: "data/CHAIR_CR"
         num_samples: 10000
         make_black: False
         one_font: False
@@ -101,6 +102,7 @@ data:
         # caption2: "4&*w^U&R2j"
         style_word: "4&*w^U&R2j"
         images: "data/custom_data"
+        images2: "data/DOG"
         num_samples: 1
         make_black: False
         one_font: False
@@ -120,4 +122,4 @@ lightning:
 
   trainer:
     benchmark: True
-    max_steps: 5001
+    max_steps: 3001

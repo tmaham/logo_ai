@@ -1,6 +1,7 @@
 import os 
 
-name = ["RABBIT"]
+
+name = ["DOLPHIN"]
 
 black = False
 one_font = True
@@ -30,7 +31,7 @@ for n in name:
         --gpus 0, \
         --actual_resume ckpt/model.ckpt\
         --data_root data/rabbit " + "--letter "\
-            + n + " --style_word " + n + \
+            +f"' {n} '" + " --style_word " + n + \
         (" --black True" if black else " ") + (" --one_font True" if one_font else " ") + " --images data/" +n 
 
     os.system(command)
@@ -55,8 +56,8 @@ for n in name:
     prompt = f" '{n} logo' "
     command = "python txt2img.py --ddim_eta 1.0 \
                             --n_samples 5 \
-                            --n_iter 1 \
+                            --n_iter 5 \
                             --ddim_steps 50 \
                             --scale 5.0\
                             --outdir " + name_out + " --ckpt " +li +" --prompt" + prompt
-    # os.system(command)
+    os.system(command)

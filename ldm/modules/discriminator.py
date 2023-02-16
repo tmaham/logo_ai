@@ -17,14 +17,15 @@ class Masker(nn.Module):
         self.layer1 = nn.Conv2d(ndf, ndf, 1, 1, 0, bias=False)
         self.bn1 = nn.BatchNorm2d(ndf)
         self.layer2 = nn.Conv2d(ndf, 1, 1, 1, 0, bias=False)
-        self.relu = nn.ReLU(0.2)
-        
+        self.layer3 = nn.Conv2d(ndf, 1, 1, 1, 0, bias=False)
+        self.sig = nn.Sigmoid()
 
     def forward(self, vec1, vec2):
         vec = torch.cat((vec1, vec2), dim=1)
+        # vec = vec2
         out1 = self.relu(self.layer0(vec))
         out2 = self.relu(self.bn1(self.layer1(out1)))
-        out3 = (self.layer2(out2))
+        out3 = self.sig(self.layer2(out2))
         return out3
 
 if org64:
@@ -86,20 +87,18 @@ elif dcgan:
             # state size. (ndf*8) x 4 x 4
             self.layer5 = nn.Conv2d(ndf * 8, 1, 2, 1, 0, bias=False)
             self.sig = nn.Sigmoid()
-        
-            self.factor = 0.8
+            self.factor = 0.5
 
         def forward(self, input, letter, mask_input=None):
             
-            if mask_input is not None:
-                mask = self.masker(input, mask_input)
-                save_image(mask[0], "mask.png")
-                noise = torch.randn_like(mask)
-                mask = mask * noise
-                mask = (1-self.factor)*torch.ones([1,1,32,32]).cuda() + self.factor *mask
-                save_image(mask[0], "mask_noise.png")
-                input = input * mask
-                save_image(input[0,0:2,:,:], "mask_input.png")
+            # if mask_input is not None:
+            #     mask = self.masker(input, mask_input)
+            #     save_image(mask[0], "mask.png")
+            #     noise = torch.randn_like(mask)
+            #     mask = mask  
+            #     save_image(mask[0], "mask_noise.png")
+            #     input = input * mask
+            #     save_image(input[0,0:2,:,:], "mask_input.png")
 
             out = self.relu(self.layer1(input))
             out = self.relu(self.bn2(self.layer2(out)))

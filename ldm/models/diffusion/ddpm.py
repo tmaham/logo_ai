@@ -1018,6 +1018,7 @@ class LatentDiffusion(DDPM):
     def discrimator_loss(self, batch, optimizer_idx =0):
         criterion = nn.BCELoss()
         l1loss = nn.L1Loss()
+        cosloss = nn.CosineSimilarity()
 
         real_label = 1.
         fake_label = 0.
@@ -1027,13 +1028,13 @@ class LatentDiffusion(DDPM):
 
 
         img1 = rearrange(batch["style"]["image"], 'b h w c -> b c h w')
-        img1 = img1.to(memory_format=torch.contiguous_format).float()
-        img1 = self.encode_first_stage(img1)
+        img1_base = img1.to(memory_format=torch.contiguous_format).float()
+        img1 = self.encode_first_stage(img1_base)
         z_S = self.get_first_stage_encoding(img1).detach()
 
         img2 = rearrange(batch["base"]["image"], 'b h w c -> b c h w')
-        img2 = img2.to(memory_format=torch.contiguous_format).float()
-        img2 = self.encode_first_stage(img2)
+        img2_base = img2.to(memory_format=torch.contiguous_format).float()
+        img2 = self.encode_first_stage(img2_base)
         z_R = self.get_first_stage_encoding(img2).detach()
 
         x_start = z_S
@@ -1052,7 +1053,6 @@ class LatentDiffusion(DDPM):
         if optimizer_idx == 0:
             
             noise1 = self.apply_model(x_noisy, t, cond)
-            save_image(noise1, "noise1_gen.png")
 
             z_theta = self.predict_start_from_noise(x_noisy,t,noise1)
             fake_x = z_theta
@@ -1061,6 +1061,11 @@ class LatentDiffusion(DDPM):
             loss_base = self.get_loss(noise1, noise, mean=False).mean([1,2,3])
             loss_base = loss_base / torch.exp(logvar_t) + logvar_t
             loss_base = self.l_simple_weight * loss_base.mean()
+
+            # fake = self.differentiable_decode_first_stage(fake_x)
+            # loss_base = l1loss(fake, img1_base).mean()
+            
+            
 
             label = torch.full((1,), real_label, dtype=torch.float, device="cuda")
 
@@ -1073,11 +1078,15 @@ class LatentDiffusion(DDPM):
             noise1 = self.apply_model(x_noisy, t, cond)
             z_theta = self.predict_start_from_noise(x_noisy,t,noise1)
             fake_x = z_theta
-            save_image(noise1, "noise1_dis.png")
-
+            
             loss_base = self.get_loss(noise1, noise, mean=False).mean([1,2,3])
             loss_base = loss_base / torch.exp(logvar_t) + logvar_t
             loss_base = self.l_simple_weight * loss_base.mean()
+
+
+            # fake = self.differentiable_decode_first_stage(fake_x)
+            # loss_base = l1loss(fake, img1_base).mean()
+            
 
             label = torch.full((1,), real_label, dtype=torch.float, device="cuda")
             output = self.discriminator(real_x, letter, fake_x).view(-1)
