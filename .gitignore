@@ -1,6 +1,12 @@
 data/
 ckpt/
+final_outputs/
+final_old_outputs/
+final_outputs_full_one/
+final_outputs_full/
 checkpoints/
 logs/
 make_data/
 outputs/
+src/
+todo.txt/
