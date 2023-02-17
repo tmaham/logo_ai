@@ -1,10 +1,10 @@
 import os 
 import pdb 
 
-n="MUSIC"
-l = "C"
+n="RABBIT"
+l = "R"
 black = False
-one_font = False
+one_font = True
 just_gen = False
 
 isExist = os.path.exists("data/"+n)
@@ -13,7 +13,7 @@ if not isExist:
     command = "mkdir data/"+n
     os.system(command)
 
-    prompt = f" ' {n} cartoon white background' "
+    prompt = f" ' {n} white background' "
     command = "python txt_gendata.py --ddim_eta 1.0 \
                             --n_samples 25 \
                             --n_iter 1\

@@ -10,7 +10,7 @@ org64 = False
 class Masker(nn.Module):
     def __init__(self):
         super(Masker, self).__init__()
-        nc = 8
+        nc = 4
         ndf = 64
         self.relu = nn.LeakyReLU(0.2, inplace=True)
         self.layer0 = nn.Conv2d(nc, ndf, 1, 1, 0, bias=False)
@@ -21,8 +21,8 @@ class Masker(nn.Module):
         self.sig = nn.Sigmoid()
 
     def forward(self, vec1, vec2):
-        vec = torch.cat((vec1, vec2), dim=1)
-        # vec = vec2
+        # vec = torch.cat((vec1, vec2), dim=1)
+        vec = vec1
         out1 = self.relu(self.layer0(vec))
         out2 = self.relu(self.bn1(self.layer1(out1)))
         out3 = self.sig(self.layer2(out2))
@@ -87,18 +87,26 @@ elif dcgan:
             # state size. (ndf*8) x 4 x 4
             self.layer5 = nn.Conv2d(ndf * 8, 1, 2, 1, 0, bias=False)
             self.sig = nn.Sigmoid()
-            self.factor = 0.5
+            self.factor = 0.3
 
         def forward(self, input, letter, mask_input=None):
             
+
+        
             # if mask_input is not None:
-            #     mask = self.masker(input, mask_input)
-            #     save_image(mask[0], "mask.png")
+            #     # pdb.set_trace()
+            #     # mask = self.masker(input, mask_input)
+            #     mask = torch.sum(input, dim=1)
+            #     mask = mask.unsqueeze(0)
+            #     save_image(1-mask[0], "mask.png")
             #     noise = torch.randn_like(mask)
-            #     mask = mask  
-            #     save_image(mask[0], "mask_noise.png")
-            #     input = input * mask
-            #     save_image(input[0,0:2,:,:], "mask_input.png")
+            #     mask_noise = (1-mask)
+            #     masknoise = 0.6*mask_noise+0.4*noise 
+            #     save_image(masknoise[0], "mask_noise.png")
+            #     # pdb.set_trace()
+            #     input_f = input*(1-masknoise)
+            #     save_image(input[0], "mask_input.png")
+            #     save_image(input_f[0], "mask_input.png")
 
             out = self.relu(self.layer1(input))
             out = self.relu(self.bn2(self.layer2(out)))

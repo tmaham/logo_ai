@@ -21,6 +21,8 @@ import torchvision.transforms as T
 from tqdm import tqdm, trange
 from torchvision.utils import save_image
 import pandas as pd
+import PIL
+from PIL import Image
 
 from ldm.util import log_txt_as_img, exists, default, ismap, isimage, mean_flat, count_params, instantiate_from_config
 from ldm.modules.ema import LitEma
@@ -1018,6 +1020,7 @@ class LatentDiffusion(DDPM):
     def discrimator_loss(self, batch, optimizer_idx =0):
         criterion = nn.BCELoss()
         l1loss = nn.L1Loss()
+        l2loss = nn.MSELoss()
         cosloss = nn.CosineSimilarity()
 
         real_label = 1.
@@ -1028,11 +1031,13 @@ class LatentDiffusion(DDPM):
 
 
         img1 = rearrange(batch["style"]["image"], 'b h w c -> b c h w')
+        save_image(img1[0], "img_style.png")
         img1_base = img1.to(memory_format=torch.contiguous_format).float()
         img1 = self.encode_first_stage(img1_base)
         z_S = self.get_first_stage_encoding(img1).detach()
 
         img2 = rearrange(batch["base"]["image"], 'b h w c -> b c h w')
+        save_image(img2[0], "img_base.png")
         img2_base = img2.to(memory_format=torch.contiguous_format).float()
         img2 = self.encode_first_stage(img2_base)
         z_R = self.get_first_stage_encoding(img2).detach()
@@ -1058,12 +1063,12 @@ class LatentDiffusion(DDPM):
             fake_x = z_theta
             
 
-            loss_base = self.get_loss(noise1, noise, mean=False).mean([1,2,3])
-            loss_base = loss_base / torch.exp(logvar_t) + logvar_t
-            loss_base = self.l_simple_weight * loss_base.mean()
+            # loss_base = self.get_loss(noise1, noise, mean=False).mean([1,2,3])
+            # loss_base = loss_base / torch.exp(logvar_t) + logvar_t
+            # loss_base = self.l_simple_weight * loss_base.mean()
 
             # fake = self.differentiable_decode_first_stage(fake_x)
-            # loss_base = l1loss(fake, img1_base).mean()
+            loss_base = l2loss(fake_x, z_S).mean()
             
             
 
@@ -1079,17 +1084,17 @@ class LatentDiffusion(DDPM):
             z_theta = self.predict_start_from_noise(x_noisy,t,noise1)
             fake_x = z_theta
             
-            loss_base = self.get_loss(noise1, noise, mean=False).mean([1,2,3])
-            loss_base = loss_base / torch.exp(logvar_t) + logvar_t
-            loss_base = self.l_simple_weight * loss_base.mean()
+            # loss_base = self.get_loss(noise1, noise, mean=False).mean([1,2,3])
+            # loss_base = loss_base / torch.exp(logvar_t) + logvar_t
+            # loss_base = self.l_simple_weight * loss_base.mean()
 
 
             # fake = self.differentiable_decode_first_stage(fake_x)
-            # loss_base = l1loss(fake, img1_base).mean()
+            loss_base = l2loss(fake_x, z_S).mean()
             
 
             label = torch.full((1,), real_label, dtype=torch.float, device="cuda")
-            output = self.discriminator(real_x, letter, fake_x).view(-1)
+            output = self.discriminator(real_x, letter, z_S).view(-1)
             loss1 = criterion(output, label)
 
             label = torch.full((1,), fake_label, dtype=torch.float, device="cuda")
@@ -1299,8 +1304,8 @@ class LatentDiffusion(DDPM):
         # if optimizer_idx == 0:
         #     loss, ld = self.shared_step(batch["style"])
         # else:
-        #     loss_base, loss = self.prob_loss(batch)
-        #     loss = loss_base + 0.5 * loss
+        # loss_base, loss = self.custom_loss(batch, loss_type=0)
+        # loss = loss_base + 0.5 * loss
 
         if optimizer_idx == 2:
             loss, ld = self.shared_step(batch["style"])
@@ -1863,7 +1868,7 @@ class LatentDiffusion(DDPM):
         # opt = torch.optim.AdamW(params, lr=lr)
 
         params = list(self.discriminator.parameters())
-        opt2 = torch.optim.AdamW(params, lr=lr*10)
+        opt2 = torch.optim.AdamW(params, lr=lr)
 
 
         if self.use_scheduler:

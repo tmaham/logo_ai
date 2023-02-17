@@ -1,11 +1,11 @@
 import os 
 
 
-name = ["DOLPHIN"]
+name = ["CAMEL"]
 
-black = False
-one_font = True
-
+black = True
+one_font = False
+just_gen = False
 
 for n in name:
     command = "mkdir data/"+n
@@ -19,11 +19,11 @@ for n in name:
                                 --ddim_steps 50 \
                                 --scale 5.0\
                                 --outdir data/"+n+" --ckpt ckpt/model.ckpt --prompt " + prompt
-        os.system(command)
+        if not just_gen: os.system(command)
 
     
     command = "rm -r logs/*"
-    os.system(command)
+    if not just_gen: os.system(command)
     
     command = "python main_finetune.py --base configs/finetune/finetune.yaml \
         -t \
@@ -34,7 +34,7 @@ for n in name:
             +f"' {n} '" + " --style_word " + n + \
         (" --black True" if black else " ") + (" --one_font True" if one_font else " ") + " --images data/" +n 
 
-    os.system(command)
+    if not just_gen: os.system(command)
 
     if black:
         if one_font:
@@ -53,7 +53,7 @@ for n in name:
     ck = os.listdir("logs")
     li = os.path.join("logs",ck[0],"checkpoints","last.ckpt")
 
-    prompt = f" '{n} logo' "
+    prompt = f" '{n}' "
     command = "python txt2img.py --ddim_eta 1.0 \
                             --n_samples 5 \
                             --n_iter 5 \

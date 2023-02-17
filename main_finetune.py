@@ -761,6 +761,7 @@ if __name__ == "__main__":
         config.data.params.train.params.text = opt.letter
         config.data.params.train.params.style_word = opt.style_word
         config.data.params.train.params.images = opt.images
+        config.data.params.train.params.images2 = opt.images + '_SIL'
         config.data.params.train.params.make_black = opt.black
         config.data.params.train.params.one_font = opt.one_font
 
